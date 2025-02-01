@@ -301,11 +301,11 @@ void Torus::initShaders() {
     // --------------------------------------------------------------------------------
     //  TODO: Init torus shader program!
     // --------------------------------------------------------------------------------
-    try {
+    /*try {
         shaderProgram = std::make_unique<glowl::GLSLProgram>(glowl::GLSLProgram::ShaderSourceList{
             {glowl::GLSLProgram::ShaderType::Vertex, basePlugin.getStringResource("shaders/torus.vert")},
             {glowl::GLSLProgram::ShaderType::Fragment, basePlugin.getStringResource("shaders/torus.frag")}});
     } catch (const std::runtime_error& e) {
         std::cerr << "Error compiling shader: " << e.what() << std::endl;
-    }
+    }*/
 }

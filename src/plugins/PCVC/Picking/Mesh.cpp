@@ -4,34 +4,41 @@
 using namespace OGL4Core2::Plugins::PCVC::CrackVis;
 
 Mesh::Mesh(CrackVis& basePlugin, std::vector<Vertex> vertices, std::vector<unsigned int> indices,
-    std::vector<Texture> textures)
-    :basePlugin(basePlugin)
+    std::vector<Texture> textures, uint16_t modelID, uint16_t meshNum)
+    : basePlugin(basePlugin),
+      shaderProgram(nullptr)
     {
     //shaderPath should be "shaders/xxx.vert"
     this->vertices = vertices;
     this->indices = indices;
     this->textures = textures;
+    globalID = ((uint32_t) modelID << 16) | (uint32_t) meshNum;
     setupMesh();
 }
 
-
-void Mesh::initShader(std::string vsPath, std::string fspath) {
-    try {
-        shaderProgram = std::make_unique<glowl::GLSLProgram>(glowl::GLSLProgram::ShaderSourceList{
-            {glowl::GLSLProgram::ShaderType::Vertex, basePlugin.getStringResource(vsPath)},
-            {glowl::GLSLProgram::ShaderType::Fragment, basePlugin.getStringResource(fspath)}});
-    } catch (glowl::GLSLProgramException& e) {
-        std::cerr << e.what() << std::endl;
-    }
-}
-
-void Mesh::Draw(std::string vsPath, std::string fspath) {
-    initShader(vsPath, fspath);
+void Mesh::Draw(const glm::mat4& projMx, const glm::mat4& viewMx) {
     shaderProgram->use();
+
+    shaderProgram->setUniform("projMx", projMx);
+    shaderProgram->setUniform("viewMx", viewMx);
+    shaderProgram->setUniform("modelMx", glm::mat4(1.0f));
+    shaderProgram->setUniform("pickId", globalID);
+
+    for (int i = 0; i < textures.size(); i++)
+    {
+        glActiveTexture(GL_TEXTURE0 + i);
+        glBindTexture(GL_TEXTURE_2D, textures[i].id);
+        if (textures[i].type == "diffuse")
+            shaderProgram->setUniform("albedoMap", i);
+        else
+            shaderProgram->setUniform("normalMap", i);
+    }
+    glActiveTexture(GL_TEXTURE0);
 
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
+
 }
 
 void Mesh::setupMesh(){
@@ -95,9 +102,22 @@ unsigned int OGL4Core2::Plugins::PCVC::CrackVis::TextureFromFile(std::string pat
     return textureID;
 }
 
-void Model::Draw(std::string vsPath, std::string fspath) {
+
+void Model::initShader(std::string vsPath, std::string fspath) {
+    try {
+        shaderProgram = std::make_unique<glowl::GLSLProgram>(glowl::GLSLProgram::ShaderSourceList{
+            {glowl::GLSLProgram::ShaderType::Vertex, basePlugin.getStringResource(vsPath)},
+            {glowl::GLSLProgram::ShaderType::Fragment, basePlugin.getStringResource(fspath)}});
+    } catch (glowl::GLSLProgramException& e) {
+        std::cerr << e.what() << std::endl;
+    }
     for (unsigned int i = 0; i < meshes.size(); i++)
-        meshes[i].Draw(vsPath, fspath);
+        meshes[i].shaderProgram = shaderProgram;
+}
+
+void Model::Draw(const glm::mat4& projMx, const glm::mat4& viewMx) {
+    for (unsigned int i = 0; i < meshes.size(); i++)
+        meshes[i].Draw(projMx, viewMx);
 }
 
 void Model::loadModel(std::string path) {
@@ -117,6 +137,7 @@ void Model::processNode(aiNode* node, const aiScene* scene) {
     for (unsigned int i = 0; i < node->mNumMeshes; i++) {
         aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
         meshes.push_back(processMesh(mesh, scene));
+        meshNum++;
     }
     for (unsigned int i = 0; i < node->mNumChildren; i++) {
         processNode(node->mChildren[i], scene);
@@ -164,13 +185,13 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene) {
     // Material
     if (mesh->mMaterialIndex >= 0) {
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-        std::vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
+        std::vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "diffuse");
         textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
-        std::vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
-        textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
+        std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "normal");
+        textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
     }
 
-    return Mesh(basePlugin, vertices, indices, textures);
+    return Mesh(basePlugin, vertices, indices, textures, modelID, meshNum);
 }
 
 std::vector<Texture> Model::loadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName) {

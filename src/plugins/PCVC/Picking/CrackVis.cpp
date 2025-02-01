@@ -74,10 +74,14 @@ CrackVis::CrackVis(const Core::Core& c)
     //  TODO: Setup the 3D scene. Add a dice, a sphere, and a torus.
     // --------------------------------------------------------------------------------
     std::string path = getResourceFilePath("models/backpack/backpack.obj").string();
-    Model backpack(*this, path);
+    std::shared_ptr<Model> backpack = std::make_shared<Model>(*this, path);
+    modelList.emplace_back(backpack);
 
-
-    std::shared_ptr<Object> o1 = std::make_shared<Base>(*this, 1, texBoard);
+    
+    for (const auto& model : modelList) {
+        model->initShader("shaders/model.vert", "shaders/model.frag");
+    }
+    /*std::shared_ptr<Object> o1 = std::make_shared<Base>(*this, 1, texBoard);
     o1->modelMx = glm::translate(o1->modelMx, glm::vec3(0.0f, 0.0f, -0.6f));
     o1->modelMx = glm::scale(o1->modelMx, glm::vec3(5.0f, 5.0f, 0.01f));
     objectList.emplace_back(o1);
@@ -94,7 +98,7 @@ CrackVis::CrackVis(const Core::Core& c)
     std::shared_ptr<Object> torus = std::make_shared<Torus>(*this, 4, nullptr);
     torus->modelMx = glm::translate(torus->modelMx, glm::vec3(-0.5f, -0.5f, -0.2f));
     torus->modelMx = glm::scale(torus->modelMx, glm::vec3(1.5f));
-    objectList.push_back(torus);
+    objectList.push_back(torus);*/
 
     // Request some parameters
     GLint maxColAtt;
@@ -355,17 +359,7 @@ void CrackVis::initShaders() {
         std::cerr << e.what() << std::endl;
     }
 
-    // --------------------------------------------------------------------------------
-    //  TODO: Init box shader.
-    // --------------------------------------------------------------------------------
-    try {
-        shaderBox = std::make_unique<glowl::GLSLProgram>(glowl::GLSLProgram::ShaderSourceList{
-            {glowl::GLSLProgram::ShaderType::Vertex, getStringResource("shaders/box.vert")},
-            {glowl::GLSLProgram::ShaderType::Fragment, getStringResource("shaders/box.frag")}});
-    } catch (const std::runtime_error& e) {
-        std::cerr << "Error compiling shader: " << e.what() << std::endl;
-    }
-    }
+}
 
 /**
  * @brief Init vertex arrays.
@@ -604,9 +598,16 @@ void CrackVis::drawToFBO() {
 
     glClear(GL_DEPTH_BUFFER_BIT);
 
-    for (const auto& object : objectList) {
-        object->draw(projMx, camera->viewMx());
+    //开画
+
+    for (const auto& model : modelList) {
+        model->Draw(projMx, camera->viewMx());
     }
+
+
+    /*for (const auto& object : objectList) {
+        object->draw(projMx, camera->viewMx());
+    }*/
 
     if (pickedObjNum > 0) {
         shaderBox->use();

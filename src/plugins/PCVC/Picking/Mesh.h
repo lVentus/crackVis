@@ -34,12 +34,12 @@ namespace OGL4Core2::Plugins::PCVC::CrackVis {
         std::vector<Vertex> vertices;
         std::vector<unsigned int> indices;
         std::vector<Texture> textures;
-        std::unique_ptr<glowl::GLSLProgram> shaderProgram;
+        std::shared_ptr<glowl::GLSLProgram> shaderProgram;
+        uint32_t globalID;
         Mesh(CrackVis& basePlugin, std::vector<Vertex> vertices, std::vector<unsigned int> indices,
-            std::vector<Texture> textures);
+            std::vector<Texture> textures, uint16_t modelID, uint16_t meshNum);
 
-        void initShader(std::string vsPath, std::string fspath);
-        void Draw(std::string vsPath, std::string fspath);
+        void Draw(const glm::mat4& projMx, const glm::mat4& viewMx);
 
     private:
         unsigned int VAO, VBO, EBO;
@@ -50,14 +50,26 @@ namespace OGL4Core2::Plugins::PCVC::CrackVis {
 
     class Model {
     public:
-        Model(CrackVis& basePlugin, std::string path)
-        : basePlugin(basePlugin)
+        Model(CrackVis& basePlugin, std::string path) :
+            basePlugin(basePlugin),
+            shaderProgram(nullptr)
         {
+            static uint16_t nextID = 0;
+            modelID = nextID++;
+            meshNum = 0;
             loadModel(path);
         }
-        void Draw(std::string vsPath, std::string fspath);
+        void Draw(const glm::mat4& projMx, const glm::mat4& viewMx);
         CrackVis& basePlugin;
         std::vector<Texture> textures_loaded;
+        uint16_t modelID;
+        uint16_t meshNum;
+        const std::vector<Mesh>& getMeshes() const {
+            return meshes;
+        }
+        void initShader(std::string vsPath, std::string fspath);
+
+        std::shared_ptr<glowl::GLSLProgram> shaderProgram;
 
     private:
         std::vector<Mesh> meshes;

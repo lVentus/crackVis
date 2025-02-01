@@ -12,6 +12,8 @@
 #include "core/RenderPlugin.h"
 #include "core/camera/OrbitCamera.h"
 
+#include "Mesh.h"
+
 namespace OGL4Core2::Plugins::PCVC::CrackVis {
     class Object;
 
@@ -88,6 +90,8 @@ namespace OGL4Core2::Plugins::PCVC::CrackVis {
         // object state
         int pickedObjNum; //!< currently picked object, "< 0" = no object picked
         std::vector<std::shared_ptr<Object>> objectList;
+        std::vector<std::shared_ptr<Model>> modelList;
+
 
         // light view (bonus task only)
         float lightZnear;      //!< near clipping plane of spot light
